@@ -1022,12 +1022,19 @@ class AvroIOBinaryDecoder
    * @param $scale
    * @return float|int
    */
-  static public function bytes_to_decimal($bytes, $scale = 0)
+  static public function bytes_to_decimal($byteString, $scale = 0)
   {
-    $mostSignificantBit = ord($bytes[0]) & 0x80;
-    $padded = str_pad($bytes, 8, $mostSignificantBit ? "\xff" : "\x00", STR_PAD_LEFT);
-    $int = unpack('J', $padded)[1];
-    return $scale > 0 ? ($int / (10 ** $scale)) : $int;
+      $bytes = unpack('C*', $byteString);
+      $sign = ($bytes[1] & 0x80) == 0x80;
+      $complement = 2 ** (count($bytes) * 8);
+      $power = 8 * (count($bytes) - 1);
+      $result = 0;
+      for ($i = 1; $i <= count($bytes); $i++) {
+          $result += $bytes[$i] * (2 ** $power);
+          $power -= 8;
+      }
+      $result = !$sign ? $result : $result - $complement;
+      return $scale > 0 ? ($result / (10 ** $scale)) : $result;
   }
 
   /**
